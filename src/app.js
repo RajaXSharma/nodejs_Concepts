@@ -18,5 +18,10 @@ app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 //public assests
 app.use(express.static("public"));
 
-//store cookies in clinet machine
+//store cookies in client machine
 app.use(cookieParser());
+
+//routes
+import userRouter from "./routes/user.routes.js";
+
+app.use("/api/v1/user", userRouter);
