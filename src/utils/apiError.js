@@ -10,7 +10,7 @@ class apiError extends Error {
         this.errors = errors;
         this.stack = stack;
         this.data = null;
-        this.success = flase;
+        this.success = false;
 
         if (stack) {
             this.stack;
