@@ -190,4 +190,54 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 });
 
-export { registerUser, loginUser, logOutUser ,refreshAccessToken};
+const changePassword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const user = await User.findById(req.user?._id);
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+    if (!isPasswordCorrect) throw new apiError(400, "invalid old password");
+
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user?._id);
+
+    return res
+        .status(200)
+        .json(200, user, "current user details successfully fetched");
+});
+
+const updateUserAccountDetails = asyncHandler(async (req, res) => {
+    const { email, fullName } = req.body;
+    if (!email || !fullName) {
+        throw new apiError(400, "required all details");
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName,
+                email,
+            },
+        },
+        { new: true }
+    ).select("-password");
+
+    return res
+        .status(200)
+        .json(new apiResponse(200, user, "user details updated succesfully"));
+});
+
+//todo : update avatar and coverImage
+
+export {
+    registerUser,
+    loginUser,
+    logOutUser,
+    refreshAccessToken,
+    getCurrentUser,
+    updateUserAccountDetails
+};
