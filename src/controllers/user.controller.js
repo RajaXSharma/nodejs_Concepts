@@ -199,6 +199,8 @@ const changePassword = asyncHandler(async (req, res) => {
 
     user.password = newPassword;
     await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json(new apiResponse(200, {}, "password updated"));
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
@@ -233,11 +235,127 @@ const updateUserAccountDetails = asyncHandler(async (req, res) => {
 
 //todo : update avatar and coverImage
 
+const updateAvatar = asyncHandler(async (req, res) => {
+    const avatarLocalPath = await req.file?.path;
+
+    if (!avatarLocalPath) {
+        throw new apiError(400, "file was not uploaded try again");
+    }
+
+    const avatarUpload = await uploadOnCloudinary(avatarLocalPath);
+
+    if (!avatarUpload.url) {
+        throw new apiError(400, "cloudnary avatar url not found try again");
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: { avatar: avatarUpload.url },
+        },
+        {
+            new: true,
+        }
+    ).select("-password");
+
+    return res.status(200).json(new apiResponse(200, user, "updated avater"));
+});
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+    const coverImageLocalPath = await req.file?.path;
+
+    if (!avatarLocalPath) {
+        throw new apiError(400, "file was not uploaded try again");
+    }
+
+    const coverImageUpload = await uploadOnCloudinary(avatarLocalPath);
+
+    if (!coverImageUpload.url) {
+        throw new apiError(
+            400,
+            "cloudnary cover image url not found try again"
+        );
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: { coverImage: coverImageUpload.url },
+        },
+        {
+            new: true,
+        }
+    ).select("-password");
+
+    return res.status(200).json(new apiResponse(200, user, "updated avater"));
+});
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    if (!username.trim()) {
+        throw new apiError(400, "username not found");
+    }
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                userName: username?.toLowerCase(),
+            },
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers",
+            },
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo",
+            },
+        },
+        {
+            subscriberCount: {
+                size: "$subscribers",
+            },
+            channelSubscribedToCount: {
+                size: "$subscribedTo",
+            },
+        },
+        {
+            isSubscribed: {
+                $cond: {
+                    if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                    then: true,
+                    else: false,
+                },
+            },
+        },
+        {
+            $project: {
+                fullName:1,
+                userName:1,
+                email:1,
+                avatar:1,
+                coverImage:1,
+                isSubscribed:1,
+                subscriberCount:1,
+                channelSubscribedToCount:1,
+            }
+        }
+    ]);
+});
+
 export {
     registerUser,
     loginUser,
     logOutUser,
     refreshAccessToken,
     getCurrentUser,
-    updateUserAccountDetails
+    updateUserAccountDetails,
 };
